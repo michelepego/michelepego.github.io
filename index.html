@@ -33,6 +33,134 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
        <button type="button" id="subscribe">Suscribe</button>
         <button type="button" id="purchase">Puchase</button>
+
+    <script>
+        // 1. view_item_list — user sees a product listing page
+window.dataLayer.push({
+  event: 'view_item_list',
+  ecommerce: {
+    item_list_id: 'category_tops',
+    item_list_name: 'Tops',
+    items: [
+      {
+        item_id: 'SKU_001',
+        item_name: 'Classic White Tee',
+        item_brand: 'Acme Apparel',
+        item_category: 'Clothing',
+        item_category2: 'Tops',
+        item_variant: 'White / M',
+        price: 49.99,
+        quantity: 1,
+        index: 0
+      },
+      {
+        item_id: 'SKU_002',
+        item_name: 'Slim Fit Chinos',
+        item_brand: 'Acme Apparel',
+        item_category: 'Clothing',
+        item_category2: 'Bottoms',
+        item_variant: 'Beige / 32',
+        price: 79.99,
+        quantity: 1,
+        index: 1
+      }
+    ]
+  }
+});
+
+// 2. view_item — user lands on a product detail page
+window.dataLayer.push({
+  event: 'view_item',
+  ecommerce: {
+    currency: 'GBP',
+    value: 49.99,
+    items: [
+      {
+        item_id: 'SKU_001',
+        item_name: 'Classic White Tee',
+        item_brand: 'Acme Apparel',
+        item_category: 'Clothing',
+        item_category2: 'Tops',
+        item_variant: 'White / M',
+        price: 49.99,
+        quantity: 1,
+        index: 0
+      }
+    ]
+  }
+});
+
+// 3. add_to_cart — user adds a product to the cart
+window.dataLayer.push({
+  event: 'add_to_cart',
+  ecommerce: {
+    currency: 'GBP',
+    value: 49.99,
+    items: [
+      {
+        item_id: 'SKU_001',
+        item_name: 'Classic White Tee',
+        item_brand: 'Acme Apparel',
+        item_category: 'Clothing',
+        item_category2: 'Tops',
+        item_variant: 'White / M',
+        price: 49.99,
+        quantity: 1,
+        index: 0
+      }
+    ]
+  }
+});
+
+// 4. begin_checkout — user enters the checkout flow
+window.dataLayer.push({
+  event: 'begin_checkout',
+  ecommerce: {
+    currency: 'GBP',
+    value: 49.99,
+    coupon: 'SUMMER10',
+    items: [
+      {
+        item_id: 'SKU_001',
+        item_name: 'Classic White Tee',
+        item_brand: 'Acme Apparel',
+        item_category: 'Clothing',
+        item_category2: 'Tops',
+        item_variant: 'White / M',
+        price: 49.99,
+        quantity: 1,
+        index: 0
+      }
+    ]
+  }
+});
+
+// 5. purchase — user completes an order
+window.dataLayer.push({
+  event: 'purchase',
+  ecommerce: {
+    transaction_id: 'TXN_20260323_001',
+    currency: 'GBP',
+    value: 44.99,
+    tax: 7.50,
+    shipping: 3.99,
+    coupon: 'SUMMER10',
+    items: [
+      {
+        item_id: 'SKU_001',
+        item_name: 'Classic White Tee',
+        item_brand: 'Acme Apparel',
+        item_category: 'Clothing',
+        item_category2: 'Tops',
+        item_variant: 'White / M',
+        price: 44.99,
+        quantity: 1,
+        index: 0
+      }
+    ]
+  }
+});
+    </script>
     
     
 </body>
