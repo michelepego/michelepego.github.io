@@ -20,7 +20,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 
 
+<script>
 
+    ;(function(w){var CFG={debug:false,extraBlocklist:[],maxWaitMs:15000,pollIntervalMs:200};var CE='consent_status',BL=['gtm.js','gtm.dom','gtm.load','gtm.click','gtm.linkClick','gtm.formSubmit','gtm.historyChange','gtm.scrollDepth','gtm.video','gtm.timer','consent_default','consent_update',CE].concat(CFG.extraBlocklist);function run(){var dl=w.dataLayer,ii=-1,ei=-1,i,e,t;for(i=0;i<dl.length;i++){e=dl[i];if(!e||e.event!==CE)continue;t=e.type&&e.type.toLowerCase();if(t==='implicit'&&ii<0)ii=i;if(t==='explicit'&&ei<0)ei=i;if(ii>-1&&ei>-1)break;}if(ii<0&&ei>-1)return;if(ii<0||ei<0||ei<=ii)return;for(i=ii+1;i<ei;i++){e=dl[i];if(!e||!e.event||BL.indexOf(e.event)>-1)continue;try{dl.push(JSON.parse(JSON.stringify(e)));}catch(_){}}}function init(){w.dataLayer=w.dataLayer||[];var dl=w.dataLayer,elapsed=0,iv;for(var i=0;i<dl.length;i++){if(dl[i]&&dl[i].event===CE&&dl[i].type&&dl[i].type.toLowerCase()==='explicit'){run();return;}}iv=setInterval(function(){elapsed+=CFG.pollIntervalMs;for(var i=0;i<dl.length;i++){if(dl[i]&&dl[i].event===CE&&dl[i].type&&dl[i].type.toLowerCase()==='explicit'){clearInterval(iv);run();return;}}if(elapsed>=CFG.maxWaitMs)clearInterval(iv);},CFG.pollIntervalMs);}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init):init();}(window));
+</script>
 
     
 </head>
