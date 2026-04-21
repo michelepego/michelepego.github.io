@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>UC SDK Tester</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0d1117;color:#e6edf3;display:flex;flex-direction:column;font-size:13px}
+
+/* ── HEADER ── */
+header{background:#161b22;border-bottom:1px solid #21262d;padding:0 16px;display:flex;align-items:center;gap:10px;height:44px;flex-shrink:0}
+header h1{font-size:13px;font-weight:600;flex:1}
+.hbadge{font-size:10px;padding:2px 9px;border-radius:20px;background:#21262d;color:#8b949e;border:1px solid #30363d;font-family:monospace}
+.doc-link{font-size:11px;color:#58a6ff;text-decoration:none;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:5px;border:1px solid #1a3a6e;background:#0f1f3d}
+.doc-link:hover{background:#1a3a6e}
+#statusDot{width:8px;height:8px;border-radius:50%;background:#3d444d;flex-shrink:0;transition:background .3s}
+#statusDot.on{background:#3fb950;box-shadow:0 0 6px #3fb95055}
+#statusDot.err{background:#f85149;box-shadow:0 0 6px #f8514955}
+#statusDot.busy{background:#d29922;box-shadow:0 0 6px #d2992255}
+
+/* ── BODY ── */
+.body{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* ── SIDEBAR ── */
+aside{width:236px;flex-shrink:0;background:#161b22;border-right:1px solid #21262d;overflow-y:auto;display:flex;flex-direction:column}
+
+.section{border-bottom:1px solid #21262d;padding:10px 12px}
+.section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#484f58;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.section-label .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot-blue{background:#58a6ff}.dot-green{background:#3fb950}.dot-red{background:#f85149}
+.dot-purple{background:#bc8cff}.dot-amber{background:#d29922}.dot-teal{background:#39d353}
+.dot-pink{background:#f778ba}.dot-gray{background:#8b949e}
+
+.section-content{display:flex;flex-direction:column;gap:5px}
+.row{display:flex;gap:5px}
+.row .sbtn{flex:1}
+
+input[type=text],select{width:100%;padding:6px 9px;background:#0d1117;border:1px solid #30363d;border-radius:5px;color:#e6edf3;font-size:11px;font-family:monospace;outline:none;transition:border-color .15s}
+input[type=text]:focus,select:focus{border-color:#58a6ff}
+input[type=text]::placeholder{color:#3d444d}
+select option{background:#161b22}
+
+.toggle-row{display:flex;align-items:center;gap:7px;padding:2px 0}
+.toggle-row label{font-size:11px;color:#8b949e;cursor:pointer;user-select:none}
+input[type=checkbox]{width:13px;height:13px;accent-color:#58a6ff;cursor:pointer;flex-shrink:0}
+
+/* ── SIDEBAR BUTTONS ── */
+.sbtn{width:100%;padding:6px 10px;background:#0d1117;border:1px solid #30363d;border-radius:5px;color:#8b949e;font-size:11px;font-family:monospace;text-align:left;cursor:pointer;transition:all .12s;display:flex;align-items:center;gap:6px;line-height:1.2}
+.sbtn:hover:not(:disabled){background:#21262d;color:#e6edf3;border-color:#8b949e}
+.sbtn:disabled{opacity:.28;cursor:not-allowed}
+.sbtn .ret{margin-left:auto;font-size:10px;color:#3d444d;flex-shrink:0}
+.sbtn:hover:not(:disabled) .ret{color:#484f58}
+
+.sbtn.init{background:#0f1f3d;border-color:#1a3a6e;color:#58a6ff;font-weight:600}
+.sbtn.init:hover:not(:disabled){background:#1a3a6e}
+.sbtn.green{color:#3fb950;border-color:#1a4a26}.sbtn.green:hover:not(:disabled){background:#0a2416}
+.sbtn.red{color:#f85149;border-color:#4a1a1a}.sbtn.red:hover:not(:disabled){background:#2d0f0f}
+.sbtn.blue{color:#58a6ff;border-color:#1a2d4a}.sbtn.blue:hover:not(:disabled){background:#0f1f3d}
+.sbtn.purple{color:#bc8cff;border-color:#3d2a6e}.sbtn.purple:hover:not(:disabled){background:#1e0f3d}
+.sbtn.amber{color:#d29922;border-color:#4a3a00}.sbtn.amber:hover:not(:disabled){background:#2d2000}
+.sbtn.teal{color:#39d353;border-color:#0f3a1a}.sbtn.teal:hover:not(:disabled){background:#0a2410}
+.sbtn.pink{color:#f778ba;border-color:#4a1a3a}.sbtn.pink:hover:not(:disabled){background:#2d0f22}
+.sbtn.gray{color:#8b949e;border-color:#30363d}.sbtn.gray:hover:not(:disabled){background:#21262d;color:#e6edf3}
+
+/* ── MAIN ── */
+main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0}
+
+.log-toolbar{background:#161b22;border-bottom:1px solid #21262d;padding:7px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.log-toolbar span{font-size:10px;color:#484f58;font-weight:600;text-transform:uppercase;letter-spacing:.06em;flex:1}
+.clrbtn{padding:3px 10px;background:none;border:1px solid #30363d;border-radius:4px;color:#8b949e;font-size:10px;cursor:pointer;font-family:monospace}
+.clrbtn:hover{background:#21262d;color:#e6edf3}
+
+#log{flex:1;overflow-y:auto;padding:10px 16px;font-family:monospace;font-size:11px;line-height:1.85;min-height:0}
+.le{display:grid;grid-template-columns:64px 200px 1fr;gap:8px;padding:1px 0;border-bottom:1px solid #0d1117;align-items:baseline}
+.le .ts{color:#3d444d;font-size:10px}
+.le .fn{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.le .val{color:#8b949e;white-space:pre-wrap;word-break:break-all;font-size:10px}
+.le.info .fn{color:#58a6ff}.le.ok .fn{color:#3fb950}.le.err .fn{color:#f85149}
+.le.warn .fn{color:#d29922}.le.data .fn{color:#bc8cff}
+
+/* ── RESIZABLE CONSOLE ── */
+.console-wrap{flex-shrink:0;background:#0d1117;border-top:1px solid #21262d;display:flex;flex-direction:column;min-height:80px;max-height:80vh}
+.resize-handle{height:5px;background:#161b22;cursor:ns-resize;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-top:1px solid #21262d;border-bottom:1px solid #21262d}
+.resize-handle:hover{background:#21262d}
+.resize-handle::after{content:'';width:32px;height:2px;background:#30363d;border-radius:2px}
+.console-input-row{display:flex;align-items:stretch;flex-shrink:0}
+.console-prompt{padding:9px 10px;font-size:13px;color:#3fb950;font-family:monospace;flex-shrink:0;background:#161b22;border-right:1px solid #21262d;user-select:none}
+#consoleInput{flex:1;background:#0d1117;border:none;outline:none;color:#e6edf3;font-family:monospace;font-size:12px;padding:9px 10px;caret-color:#3fb950;min-width:0}
+#consoleInput::placeholder{color:#3d444d}
+.run-btn{padding:9px 16px;background:#161b22;border:none;border-left:1px solid #21262d;color:#3fb950;font-family:monospace;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0}
+.run-btn:hover{background:#21262d}
+#conout{flex:1;overflow-y:auto;padding:6px 14px 8px;font-family:monospace;font-size:11px;line-height:1.7;min-height:0}
+.co-cmd{color:#e6edf3;padding:1px 0}.co-res{color:#bc8cff;padding:1px 0;white-space:pre-wrap;word-break:break-all}.co-err{color:#f85149;padding:1px 0}
+.console-hint{padding:5px 14px 0;font-size:10px;color:#3d444d;font-family:monospace;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:16px">🍪</span>
+  <h1>Usercentrics Browser SDK Tester</h1>
+  <span class="hbadge" id="versionBadge">v—</span>
+  <a class="doc-link" href="https://docs.usercentrics.com/cmp_browser_sdk/4.61.0/index.html" target="_blank">&#128196; Docs</a>
+  <div id="statusDot"></div>
+</header>
+
+<div class="body">
+<aside>
+
+  <!-- CONFIG -->
+  <div class="section">
+    <div class="section-label"><span class="dot dot-gray"></span>Configuration</div>
+    <div class="section-content">
+      <input type="text" id="settingsId" placeholder="Settings ID">
+      <select id="sdkVersion">
+        <option value="4.61.0" selected>v4.61.0 (latest)</option>
+        <option value="4.60.0">v4.60.0</option>
+        <option value="4.59.0">v4.59.0</option>
+        <option value="4.58.0">v4.58.0</option>
+        <option value="4.50.0">v4.50.0</option>
+        <option value="4.0.0">v4.0.0</option>
+        <option value="3.0.0">v3.0.0</option>
+        <option value="custom">Custom version…</option>
+      </select>
+      <input type="text" id="customVersion" placeholder="e.g. 4.55.2" style="display:none">
+      <div class="toggle-row">
+        <input type="checkbox" id="tcfMode">
+        <label for="tcfMode">TCF mode (createTcfApiStub)</label>
+      </div>
+      <button class="sbtn init" id="btnInit">⚡ Initialize SDK</button>
+      <button class="sbtn gray" id="btnReset" disabled>↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- GENERAL -->
+  <div class="section">
+    <div class="section-label"><span class="dot dot-blue"></span>General</div>
+    <div class="section-content">
+      <button class="sbtn blue sdk-btn" data-fn="getSettingsCore"       disabled>getSettingsCore() <span class="ret">Core</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="getSettingsLabels"     disabled>getSettingsLabels() <span class="ret">Labels</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="getSettingsData"       disabled>getSettingsData() <span class="ret">Data</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="getSettingsUI"         disabled>getSettingsUI() <span class="ret">UI</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="getAriaLabels"         disabled>getAriaLabels() <span class="ret">obj</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="getControllerId"       disabled>getControllerId() <span class="ret">string</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="areAllConsentsAccepted" disabled>areAllConsentsAccepted() <span class="ret">bool</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="getIsConsentRequired"  disabled>getIsConsentRequired() <span class="ret">bool</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="getThirdPartyCount"    disabled>getThirdPartyCount() <span class="ret">number</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="getAddVendorCount"     disabled>getAddVendorCount() <span class="ret">bool</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="getAbTestVariant"      disabled>getAbTestVariant() <span class="ret">string</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="getActionTypePerformed" disabled>getActionTypePerformed() <span class="ret">type</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="getGpcSignalHonoured"  disabled>getGpcSignalHonoured() <span class="ret">bool</span></button>
+      <button class="sbtn blue sdk-btn" data-fn="saveUserActionPerformed" disabled>saveUserActionPerformed() <span class="ret">void</span></button>
+      <div style="display:flex;gap:5px;align-items:center">
+        <input type="text" id="langCode" value="en" style="width:54px;flex-shrink:0">
+        <button class="sbtn blue sdk-btn" data-fn="changeLanguage" disabled style="flex:1">changeLanguage() <span class="ret">void</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NON-TCF CONSENT -->
+  <div class="section">
+    <div class="section-label"><span class="dot dot-green"></span>Non-TCF consent</div>
+    <div class="section-content">
+      <button class="sbtn green sdk-btn" data-fn="acceptAllServices"    disabled>acceptAllServices() <span class="ret">void</span></button>
+      <button class="sbtn red   sdk-btn" data-fn="denyAllServices"      disabled>denyAllServices() <span class="ret">void</span></button>
+      <button class="sbtn blue  sdk-btn" data-fn="getCategoriesBaseInfo" disabled>getCategoriesBaseInfo() <span class="ret">[]</span></button>
+      <button class="sbtn blue  sdk-btn" data-fn="getCategoriesFullInfo" disabled>getCategoriesFullInfo() <span class="ret">Promise</span></button>
+      <button class="sbtn blue  sdk-btn" data-fn="getServicesBaseInfo"  disabled>getServicesBaseInfo() <span class="ret">[]</span></button>
+      <button class="sbtn blue  sdk-btn" data-fn="getServicesFullInfo"  disabled>getServicesFullInfo() <span class="ret">Promise</span></button>
+      <button class="sbtn teal  sdk-btn" data-fn="fetchIsUserInEU"      disabled>fetchIsUserInEU() <span class="ret">Promise&lt;bool&gt;</span></button>
+      <button class="sbtn teal  sdk-btn" data-fn="fetchUserCountry"     disabled>fetchUserCountry() <span class="ret">Promise</span></button>
+      <div style="display:flex;gap:5px;align-items:center">
+        <input type="text" id="controllerIdInput" placeholder="controllerId" style="flex:1">
+        <button class="sbtn teal sdk-btn" data-fn="restoreUserSession" disabled style="flex:0 0 auto;width:auto;padding:6px 8px">restoreUserSession()</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TCF -->
+  <div class="section">
+    <div class="section-label"><span class="dot dot-purple"></span>TCF</div>
+    <div class="section-content">
+      <button class="sbtn purple sdk-btn" data-fn="getTCFData"                   disabled>getTCFData() <span class="ret">TCFData</span></button>
+      <button class="sbtn purple sdk-btn" data-fn="getTCFDisclosedVendorsSegmentString" disabled>getTCFDisclosedVendors… <span class="ret">string</span></button>
+      <button class="sbtn green  sdk-btn" data-fn="acceptAllForTCF_1"            disabled>acceptAllForTCF(L1) <span class="ret">void</span></button>
+      <button class="sbtn green  sdk-btn" data-fn="acceptAllForTCF_2"            disabled>acceptAllForTCF(L2) <span class="ret">void</span></button>
+      <button class="sbtn red    sdk-btn" data-fn="denyAllForTCF_1"              disabled>denyAllForTCF(L1) <span class="ret">void</span></button>
+      <button class="sbtn red    sdk-btn" data-fn="denyAllForTCF_2"              disabled>denyAllForTCF(L2) <span class="ret">void</span></button>
+      <button class="sbtn amber  sdk-btn" data-fn="setTCFUIAsOpen"               disabled>setTCFUIAsOpen() <span class="ret">void</span></button>
+      <button class="sbtn amber  sdk-btn" data-fn="setTCFUIAsClosed"             disabled>setTCFUIAsClosed() <span class="ret">void</span></button>
+      <div style="display:flex;gap:5px;align-items:center">
+        <input type="text" id="tcStringInput" placeholder="tcString" style="flex:1">
+        <button class="sbtn purple sdk-btn" data-fn="injectTCString" disabled style="flex:0 0 auto;width:auto;padding:6px 8px">injectTCString()</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CCPA -->
+  <div class="section">
+    <div class="section-label"><span class="dot dot-pink"></span>CCPA</div>
+    <div class="section-content">
+      <button class="sbtn pink sdk-btn" data-fn="getCcpaOptOutStatus"        disabled>getCcpaOptOutStatus() <span class="ret">bool</span></button>
+      <button class="sbtn pink sdk-btn" data-fn="getCcpaExplicitNoticeStatus" disabled>getCcpaExplicitNoticeStatus() <span class="ret">bool</span></button>
+      <button class="sbtn pink sdk-btn" data-fn="saveDefaultForCcpa"         disabled>saveDefaultForCcpa() <span class="ret">void</span></button>
+      <button class="sbtn pink sdk-btn" data-fn="saveOptOutForCcpa_true"     disabled>saveOptOutForCcpa(true) <span class="ret">void</span></button>
+      <button class="sbtn pink sdk-btn" data-fn="saveOptOutForCcpa_false"    disabled>saveOptOutForCcpa(false) <span class="ret">void</span></button>
+    </div>
+  </div>
+
+  <!-- GPP -->
+  <div class="section">
+    <div class="section-label"><span class="dot dot-teal"></span>GPP</div>
+    <div class="section-content">
+      <button class="sbtn teal sdk-btn" data-fn="setGppDisplayVisible" disabled>setGppDisplayVisible() <span class="ret">void</span></button>
+      <button class="sbtn teal sdk-btn" data-fn="setGppDisplayHidden"  disabled>setGppDisplayHidden() <span class="ret">void</span></button>
+    </div>
+  </div>
+
+  <!-- LAYER / STORAGE -->
+  <div class="section">
+    <div class="section-label"><span class="dot dot-amber"></span>Layer &amp; storage</div>
+    <div class="section-content">
+      <button class="sbtn amber sdk-btn" data-fn="updateLayer_0" disabled>updateLayer(FIRST_LAYER=0) <span class="ret">void</span></button>
+      <button class="sbtn amber sdk-btn" data-fn="updateLayer_1" disabled>updateLayer(NONE=1) <span class="ret">void</span></button>
+      <button class="sbtn amber sdk-btn" data-fn="updateLayer_2" disabled>updateLayer(PRIVACY_BTN=2) <span class="ret">void</span></button>
+      <button class="sbtn amber sdk-btn" data-fn="updateLayer_3" disabled>updateLayer(SECOND_LAYER=3) <span class="ret">void</span></button>
+      <button class="sbtn gray  sdk-btn" data-fn="clearStorage"           disabled>clearStorage() <span class="ret">void</span></button>
+      <button class="sbtn gray  sdk-btn" data-fn="loadServices"           disabled>loadServices() <span class="ret">void</span></button>
+      <button class="sbtn gray  sdk-btn" data-fn="loadSettings"           disabled>loadSettings() <span class="ret">obj</span></button>
+      <button class="sbtn gray  sdk-btn" data-fn="fetchCoreAndDps"        disabled>fetchCoreAndDps() <span class="ret">obj</span></button>
+      <button class="sbtn gray  sdk-btn" data-fn="enableScriptsForServicesWithConsent" disabled>enableScriptsForServices… <span class="ret">void</span></button>
+    </div>
+  </div>
+
+  <!-- AMP -->
+  <div class="section">
+    <div class="section-label"><span class="dot dot-gray"></span>AMP</div>
+    <div class="section-content">
+      <button class="sbtn gray sdk-btn" data-fn="acceptAllAmp"    disabled>acceptAllAmp() <span class="ret">void</span></button>
+      <button class="sbtn gray sdk-btn" data-fn="denyAllAmp"      disabled>denyAllAmp() <span class="ret">void</span></button>
+      <button class="sbtn gray sdk-btn" data-fn="dismissAmp"      disabled>dismissAmp() <span class="ret">void</span></button>
+      <button class="sbtn gray sdk-btn" data-fn="uiReadyAmp"      disabled>uiReadyAmp() <span class="ret">void</span></button>
+      <button class="sbtn gray sdk-btn" data-fn="enterFullscreenAmp" disabled>enterFullscreenAmp() <span class="ret">void</span></button>
+    </div>
+  </div>
+
+</aside>
+
+<main>
+  <div class="log-toolbar">
+    <span>Output log</span>
+    <button class="clrbtn" id="clearLog">Clear</button>
+  </div>
+  <div id="log"></div>
+
+  <div class="console-wrap" id="consoleWrap">
+    <div class="resize-handle" id="resizeHandle"></div>
+    <div class="console-hint">UC is available as window.UC &nbsp;·&nbsp; await UC.acceptAllServices() &nbsp;·&nbsp; UC.getTCFData() &nbsp;·&nbsp; UC.getServicesBaseInfo()</div>
+    <div class="console-input-row">
+      <span class="console-prompt">&gt;</span>
+      <input type="text" id="consoleInput" placeholder="Type any JS expression and press Enter…">
+      <button class="run-btn" id="runBtn">Run</button>
+    </div>
+    <div id="conout"></div>
+  </div>
+</main>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var UC = null, loadedVersion = null;
+
+/* ── helpers ─────────────────────────────────────────────────────────── */
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function log(fn, val, type){
+  var ts = new Date().toLocaleTimeString('en',{hour12:false});
+  var d = document.createElement('div');
+  d.className = 'le '+(type||'info');
+  var valStr = val === undefined ? '' : (typeof val === 'string' ? val : JSON.stringify(val,null,2));
+  d.innerHTML = '<span class="ts">'+ts+'</span>'
+    +'<span class="fn">'+esc(fn)+'</span>'
+    +(valStr ? '<span class="val">'+esc(valStr)+'</span>' : '');
+  var el = document.getElementById('log');
+  el.insertBefore(d, el.firstChild);
+}
+
+function setStatus(s){ document.getElementById('statusDot').className = s; }
+
+function setSdkBtns(on){
+  document.querySelectorAll('.sdk-btn').forEach(function(b){ b.disabled = !on; });
+  document.getElementById('btnReset').disabled = !on;
+  document.getElementById('btnInit').disabled  =  on;
+}
+
+function loadSDK(version){
+  return new Promise(function(resolve, reject){
+    var old = document.getElementById('ucSdkScript');
+    if(old){ old.remove(); try{ delete window.UC_SDK; }catch(e){} }
+    var s = document.createElement('script');
+    s.id = 'ucSdkScript';
+    s.src = 'https://app.usercentrics.eu/browser-sdk/'+version+'/bundle.js';
+    s.onload  = resolve;
+    s.onerror = function(){ reject(new Error('Could not load SDK v'+version+' — check the version number')); };
+    document.body.appendChild(s);
+  });
+}
+
+/* ── version selector ─────────────────────────────────────────────── */
+document.getElementById('sdkVersion').addEventListener('change', function(){
+  document.getElementById('customVersion').style.display = this.value === 'custom' ? 'block' : 'none';
+});
+
+/* ── init ─────────────────────────────────────────────────────────── */
+document.getElementById('btnInit').addEventListener('click', async function(){
+  var id = document.getElementById('settingsId').value.trim();
+  if(!id){ log('⚠ Enter a Settings ID', undefined, 'warn'); return; }
+  var sel = document.getElementById('sdkVersion').value;
+  var version = sel === 'custom' ? document.getElementById('customVersion').value.trim() : sel;
+  if(!version){ log('⚠ Enter a version number', undefined, 'warn'); return; }
+  var tcf = document.getElementById('tcfMode').checked;
+  var opts = tcf ? {createTcfApiStub:true} : {};
+  setStatus('busy');
+  try{
+    if(version !== loadedVersion){
+      log('Loading SDK…', 'v'+version, 'info');
+      await loadSDK(version);
+      loadedVersion = version;
+      document.getElementById('versionBadge').textContent = 'v'+version;
+      log('SDK loaded', 'v'+version, 'ok');
+    }
+    log('new UC_SDK.default()', JSON.stringify(opts), 'info');
+    UC = new UC_SDK.default(id, opts);
+    window.UC = UC;
+    log('UC.init()…', undefined, 'info');
+    var iv = await UC.init();
+    log('init()', iv, 'ok');
+    if(iv.variant === 2 && iv.initialLayer === 0){
+      UC.setTCFUIAsOpen();
+      log('setTCFUIAsOpen()', 'called automatically', 'warn');
+    }
+    setStatus('on');
+    setSdkBtns(true);
+  }catch(e){
+    log('Error', e.message, 'err');
+    setStatus('err');
+  }
+});
+
+/* ── reset ─────────────────────────────────────────────────────────── */
+document.getElementById('btnReset').addEventListener('click', function(){
+  UC = null; window.UC = null;
+  setSdkBtns(false);
+  setStatus('');
+  log('Reset', undefined, 'warn');
+});
+
+/* ── sdk buttons ────────────────────────────────────────────────────── */
+document.querySelectorAll('.sdk-btn').forEach(function(btn){
+  btn.addEventListener('click', async function(){
+    if(!UC){ log('⚠ Not initialized', undefined, 'warn'); return; }
+    var fn = btn.getAttribute('data-fn');
+    try{
+      var result;
+      if      (fn==='acceptAllForTCF_1')           result = await UC.acceptAllForTCF(1);
+      else if (fn==='acceptAllForTCF_2')           result = await UC.acceptAllForTCF(2);
+      else if (fn==='denyAllForTCF_1')             result = await UC.denyAllForTCF(1);
+      else if (fn==='denyAllForTCF_2')             result = await UC.denyAllForTCF(2);
+      else if (fn==='updateLayer_0')               result = await UC.updateLayer(0);
+      else if (fn==='updateLayer_1')               result = await UC.updateLayer(1);
+      else if (fn==='updateLayer_2')               result = await UC.updateLayer(2);
+      else if (fn==='updateLayer_3')               result = await UC.updateLayer(3);
+      else if (fn==='changeLanguage')              result = await UC.changeLanguage(document.getElementById('langCode').value.trim()||'en');
+      else if (fn==='restoreUserSession')          result = await UC.restoreUserSession(document.getElementById('controllerIdInput').value.trim());
+      else if (fn==='injectTCString')              result = await UC.injectTCString(document.getElementById('tcStringInput').value.trim());
+      else if (fn==='saveOptOutForCcpa_true')      result = await UC.saveOptOutForCcpa(true);
+      else if (fn==='saveOptOutForCcpa_false')     result = await UC.saveOptOutForCcpa(false);
+      else if (typeof UC[fn] === 'function')       result = await UC[fn]();
+      else { log('⚠ '+fn, 'not available on this SDK version', 'warn'); return; }
+      log(fn+'()', result === undefined ? '(void)' : result, 'data');
+    }catch(e){ log(fn+'()', e.message, 'err'); }
+  });
+});
+
+/* ── clear log ──────────────────────────────────────────────────────── */
+document.getElementById('clearLog').addEventListener('click', function(){
+  document.getElementById('log').innerHTML = '';
+});
+
+/* ── console ─────────────────────────────────────────────────────────── */
+function runCmd(){
+  var inp = document.getElementById('consoleInput');
+  var cmd = inp.value.trim();
+  if(!cmd) return;
+  inp.value = '';
+  var out = document.getElementById('conout');
+  var cmdEl = document.createElement('div');
+  cmdEl.className = 'co-cmd';
+  cmdEl.textContent = '> '+cmd;
+  out.appendChild(cmdEl);
+  var resEl = document.createElement('div');
+  try{
+    var fn = new Function('UC','return (async function(){ return ('+cmd+'); })()');
+    fn(UC).then(function(r){
+      resEl.className = 'co-res';
+      resEl.textContent = r===undefined ? 'undefined' : JSON.stringify(r,null,2);
+      out.appendChild(resEl);
+      out.scrollTop = out.scrollHeight;
+    }).catch(function(e){
+      resEl.className = 'co-err';
+      resEl.textContent = e.message;
+      out.appendChild(resEl);
+      out.scrollTop = out.scrollHeight;
+    });
+  }catch(e){
+    resEl.className='co-err'; resEl.textContent=e.message; out.appendChild(resEl);
+  }
+  inp.focus();
+}
+
+document.getElementById('runBtn').addEventListener('click', runCmd);
+document.getElementById('consoleInput').addEventListener('keydown', function(e){ if(e.key==='Enter') runCmd(); });
+
+/* ── resizable console ──────────────────────────────────────────────── */
+(function(){
+  var handle = document.getElementById('resizeHandle');
+  var wrap   = document.getElementById('consoleWrap');
+  var startY, startH;
+
+  handle.addEventListener('mousedown', function(e){
+    startY = e.clientY;
+    startH = wrap.offsetHeight;
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+    e.preventDefault();
+  });
+
+  function onMove(e){
+    var delta = startY - e.clientY;   // drag up = bigger console
+    var newH  = Math.min(Math.max(startH + delta, 80), window.innerHeight * 0.75);
+    wrap.style.height = newH + 'px';
+  }
+
+  function onUp(){
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup',   onUp);
+  }
+})();
+
+setSdkBtns(false);
+log('Ready', 'enter a Settings ID and click Initialize SDK', 'info');
+
+})();
+</script>
+</body>
+</html>
