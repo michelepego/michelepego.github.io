@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GraphQL Console Runner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0f12; --bg2: #141720; --bg3: #1c2030; --bg4: #242840;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+    --text: #e8eaf2; --muted: #7a7f9a; --dim: #4a4f6a;
+    --accent: #4f8ef7; --accent2: #7c5cfc;
+    --green: #3dd68c; --red: #f06079; --amber: #f5a623; --purple: #a78bfa;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Syne', sans-serif;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.6; }
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* Header */
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 24px; border-bottom: 1px solid var(--border);
+    background: var(--bg2); position: sticky; top: 0; z-index: 10;
+  }
+  .logo {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 13px; font-weight: 500; color: #fff; flex-shrink: 0;
+  }
+  header h1 { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+  header span { font-size: 12px; color: var(--muted); margin-left: 2px; font-family: var(--mono); }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 320px 1fr; flex: 1; min-height: 0; overflow: hidden; }
+
+  /* Panel */
+  .panel { border-right: 1px solid var(--border); background: var(--bg2); overflow-y: auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 20px; }
+  .field-group { display: flex; flex-direction: column; gap: 8px; }
+  .field-label {
+    font-size: 10px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .field-label .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  input[type=text], input[type=password], textarea {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 9px 11px; font-size: 12px; font-family: var(--mono);
+    color: var(--text); outline: none; transition: border-color .15s;
+  }
+  input[type=text]:focus, input[type=password]:focus, textarea:focus { border-color: var(--accent); background: var(--bg4); }
+  textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+  .add-btn {
+    padding: 9px 13px; background: var(--bg4); border: 1px solid var(--border2);
+    border-radius: 6px; color: var(--accent); font-family: var(--mono);
+    font-size: 12px; cursor: pointer; white-space: nowrap; transition: background .15s;
+  }
+  .add-btn:hover { background: rgba(79,142,247,.15); }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-family: var(--mono);
+    background: rgba(79,142,247,.1); border: 1px solid rgba(79,142,247,.25);
+    border-radius: 4px; padding: 3px 8px; color: var(--accent);
+  }
+  .tag .rm { cursor: pointer; color: var(--dim); font-size: 13px; line-height: 1; }
+  .tag .rm:hover { color: var(--red); }
+  .hint { font-size: 11px; color: var(--dim); font-family: var(--mono); }
+  .run-btn {
+    width: 100%; padding: 11px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 8px; color: #fff; font-family: var(--sans);
+    font-size: 13px; font-weight: 600; cursor: pointer; letter-spacing: .02em;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: opacity .15s, transform .1s; margin-top: auto;
+  }
+  .run-btn:hover { opacity: .88; }
+  .run-btn:active { transform: scale(.98); }
+  .run-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .abort-btn {
+    width: 100%; padding: 11px;
+    background: transparent; border: 1px solid rgba(240,96,121,.4);
+    border-radius: 8px; color: var(--red); font-family: var(--sans);
+    font-size: 13px; font-weight: 600; cursor: pointer; letter-spacing: .02em;
+    display: none; align-items: center; justify-content: center; gap: 8px;
+    transition: background .15s, transform .1s;
+  }
+  .abort-btn:hover { background: rgba(240,96,121,.1); }
+  .abort-btn:active { transform: scale(.98); }
+  .prog-wrap { display: none; }
+  .prog-track { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .prog-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; transition: width .3s; width: 0%; }
+  .prog-text { font-size: 10px; color: var(--dim); font-family: var(--mono); margin-top: 4px; }
+
+  /* Main pane */
+  .main { background: var(--bg); overflow: hidden; display: flex; flex-direction: column; }
+
+  /* Tabs */
+  .tabs-bar {
+    display: flex; align-items: center; gap: 0;
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 0 20px; position: sticky; top: 0; z-index: 5; flex-shrink: 0;
+  }
+  .tab-btn {
+    padding: 12px 16px; font-size: 12px; font-weight: 600; letter-spacing: .04em;
+    color: var(--muted); background: transparent; border: none;
+    border-bottom: 2px solid transparent; cursor: pointer;
+    font-family: var(--sans); transition: color .15s; white-space: nowrap;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+  .tab-count {
+    font-size: 10px; font-family: var(--mono); padding: 1px 6px;
+    background: var(--bg4); border-radius: 10px; color: var(--muted);
+  }
+  .tab-btn.active .tab-count { background: rgba(79,142,247,.2); color: var(--accent); }
+
+  .tab-panel { display: none; flex: 1; overflow-y: auto; flex-direction: column; }
+  .tab-panel.active { display: flex; }
+
+  /* Empty state */
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; color: var(--dim); padding: 40px;
+  }
+  .empty-icon { font-size: 40px; opacity: .3; }
+  .empty-state p { font-size: 13px; font-family: var(--mono); text-align: center; line-height: 1.8; }
+
+  /* Results tab header */
+  .pane-header {
+    padding: 10px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg2); flex-shrink: 0;
+  }
+  .pane-header h2 { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+  .summary-pills { display: flex; gap: 6px; margin-left: auto; }
+  .pill { font-size: 11px; font-family: var(--mono); padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+  .pill-ok { background: rgba(61,214,140,.12); color: var(--green); border: 1px solid rgba(61,214,140,.25); }
+  .pill-err { background: rgba(240,96,121,.12); color: var(--red); border: 1px solid rgba(240,96,121,.25); }
+  .pill-run { background: rgba(79,142,247,.12); color: var(--accent); border: 1px solid rgba(79,142,247,.2); }
+  .clear-btn {
+    padding: 4px 10px; font-size: 11px; font-family: var(--mono);
+    background: transparent; border: 1px solid var(--border2);
+    border-radius: 4px; color: var(--muted); cursor: pointer;
+  }
+  .clear-btn:hover { color: var(--text); }
+
+  /* Result items */
+  .results-list { display: flex; flex-direction: column; }
+  .result-item { border-bottom: 1px solid var(--border); animation: fadeIn .2s ease both; }
+  .result-item:last-child { border-bottom: none; }
+  .ri-header { display: flex; align-items: center; gap: 10px; padding: 11px 20px; cursor: pointer; transition: background .12s; }
+  .ri-header:hover { background: var(--bg2); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot-ok { background: var(--green); box-shadow: 0 0 6px rgba(61,214,140,.5); }
+  .dot-err { background: var(--red); box-shadow: 0 0 6px rgba(240,96,121,.5); }
+  .dot-pending { background: var(--dim); }
+  .ri-id { font-size: 12px; font-family: var(--mono); color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; }
+  .badge-query { background: rgba(79,142,247,.15); color: var(--accent); border: 1px solid rgba(79,142,247,.2); }
+  .badge-mut { background: rgba(124,92,252,.15); color: var(--purple); border: 1px solid rgba(124,92,252,.2); }
+  .badge-http { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .badge-ms { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+  .chevron { font-size: 12px; color: var(--dim); transition: transform .2s; }
+  .chevron.open { transform: rotate(180deg); }
+  .ri-body { display: none; padding: 0 20px 16px; }
+  .ri-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .ri-meta span { font-size: 11px; font-family: var(--mono); color: var(--muted); }
+  .copy-btn {
+    margin-left: auto; padding: 4px 10px; font-size: 11px; font-family: var(--mono);
+    background: transparent; border: 1px solid var(--border2);
+    border-radius: 4px; color: var(--muted); cursor: pointer;
+  }
+  .copy-btn:hover { color: var(--text); }
+  .code-block {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px;
+    font-family: var(--mono); font-size: 11px; line-height: 1.6; color: var(--text);
+    white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto;
+  }
+  .code-block.error { border-color: rgba(240,96,121,.25); color: var(--red); background: rgba(240,96,121,.04); }
+  .data-summary { margin-bottom: 8px; }
+  .data-key { font-size: 11px; font-family: var(--mono); color: var(--muted); margin-bottom: 4px; }
+  .data-key strong { color: var(--accent); }
+  .data-count { font-size: 10px; background: rgba(79,142,247,.1); color: var(--accent); padding: 1px 6px; border-radius: 3px; margin-left: 5px; }
+
+  /* ── Operation Log ── */
+  .log-list { display: flex; flex-direction: column; padding: 0; }
+
+  .log-entry {
+    border-bottom: 1px solid var(--border);
+    animation: fadeIn .25s ease both;
+  }
+  .log-entry:last-child { border-bottom: none; }
+
+  .log-header {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 20px; cursor: pointer; transition: background .12s;
+    position: relative;
+  }
+  .log-header:hover { background: var(--bg2); }
+
+  .log-index {
+    font-size: 10px; font-family: var(--mono); color: var(--dim);
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 4px; padding: 2px 6px; flex-shrink: 0; margin-top: 1px;
+    min-width: 28px; text-align: center;
+  }
+
+  .log-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+
+  .log-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .log-op-name { font-size: 12px; font-family: var(--mono); color: var(--text); font-weight: 500; }
+
+  .log-meta-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .log-ts { font-size: 10px; font-family: var(--mono); color: var(--dim); }
+  .log-endpoint { font-size: 10px; font-family: var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+
+  /* Mini progress bar inside log header */
+  .log-prog-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .log-mini-track { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .log-mini-fill { height: 100%; border-radius: 2px; transition: width .3s; }
+  .fill-running { background: var(--amber); }
+  .fill-done-ok { background: var(--green); }
+  .fill-done-mixed { background: var(--amber); }
+  .fill-done-err { background: var(--red); }
+  .log-prog-label { font-size: 10px; font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+
+  .log-status-badge {
+    font-size: 10px; font-family: var(--mono); padding: 2px 8px; border-radius: 4px; font-weight: 600;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .lsb-running { background: rgba(245,166,35,.12); color: var(--amber); border: 1px solid rgba(245,166,35,.25); }
+  .lsb-ok { background: rgba(61,214,140,.12); color: var(--green); border: 1px solid rgba(61,214,140,.25); }
+  .lsb-mixed { background: rgba(245,166,35,.12); color: var(--amber); border: 1px solid rgba(245,166,35,.25); }
+  .lsb-err { background: rgba(240,96,121,.12); color: var(--red); border: 1px solid rgba(240,96,121,.25); }
+
+  .log-chevron { font-size: 12px; color: var(--dim); transition: transform .2s; flex-shrink: 0; margin-top: 2px; }
+  .log-chevron.open { transform: rotate(180deg); }
+
+  /* Log body — ID grid */
+  .log-body { display: none; border-top: 1px solid var(--border); }
+  .log-body-inner { padding: 14px 20px 14px 52px; display: flex; flex-direction: column; gap: 10px; }
+
+  .log-query-preview {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 5px;
+    padding: 8px 11px; font-family: var(--mono); font-size: 10px; color: var(--muted);
+    white-space: pre; overflow-x: auto; max-height: 80px;
+  }
+
+  .log-ids-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
+
+  .log-id-grid { display: flex; flex-direction: column; gap: 3px; }
+  .log-id-row {
+    display: grid; grid-template-columns: 1fr 70px 60px 50px;
+    align-items: center; gap: 8px;
+    padding: 5px 10px; border-radius: 5px;
+    background: var(--bg3); border: 1px solid var(--border);
+    font-size: 11px; font-family: var(--mono);
+    transition: background .1s;
+  }
+  .log-id-row:hover { background: var(--bg4); }
+  .log-id-val { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log-id-status { display: flex; align-items: center; gap: 5px; }
+  .ls-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .ls-ok { background: var(--green); }
+  .ls-err { background: var(--red); }
+  .ls-pending { background: var(--dim); }
+  .ls-running { background: var(--amber); animation: pulse 1s ease infinite; }
+  .ls-label { font-size: 10px; }
+  .ls-label-ok { color: var(--green); }
+  .ls-label-err { color: var(--red); }
+  .ls-label-pending { color: var(--dim); }
+  .ls-label-running { color: var(--amber); }
+  .log-id-http { color: var(--muted); }
+  .log-id-ms { color: var(--dim); }
+
+  /* Security guardrails */
+  .guardrail-section { display: flex; flex-direction: column; gap: 8px; }
+  .guardrail-row { display: flex; align-items: center; gap: 8px; }
+  .guardrail-row label { font-size: 11px; font-family: var(--mono); color: var(--muted); flex: 1; }
+  .guardrail-row input[type=number] {
+    width: 72px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 8px; font-size: 12px; font-family: var(--mono);
+    color: var(--text); outline: none; transition: border-color .15s; text-align: right;
+  }
+  .guardrail-row input[type=number]:focus { border-color: var(--accent); background: var(--bg4); }
+  .guardrail-row .unit { font-size: 11px; font-family: var(--mono); color: var(--dim); }
+  .guardrail-divider {
+    font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--dim); display: flex; align-items: center; gap: 8px; margin-bottom: 2px;
+  }
+  .guardrail-divider::before, .guardrail-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .warn-banner {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: rgba(240,96,121,.06); border: 1px solid rgba(240,96,121,.2);
+    border-radius: 6px; padding: 8px 11px; margin-top: 2px;
+    font-size: 11px; font-family: var(--mono); color: var(--red); line-height: 1.5;
+  }
+  .warn-icon { flex-shrink: 0; font-size: 13px; margin-top: 1px; }
+  .id-limit-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 10px; font-family: var(--mono); color: var(--dim); margin-top: 2px;
+  }
+  .id-limit-bar span { transition: color .2s; }
+  .id-limit-bar span.at-limit { color: var(--red); }
+  .id-limit-bar span.near-limit { color: var(--amber); }
+  .dot-timeout { background: var(--amber); box-shadow: 0 0 6px rgba(245,166,35,.5); }
+  .ls-timeout { background: var(--amber); }
+  .ls-label-timeout { color: var(--amber); }
+  .lsb-timeout { background: rgba(245,166,35,.12); color: var(--amber); border: 1px solid rgba(245,166,35,.25); }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+  .spinning { display: inline-block; animation: spin .8s linear infinite; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+  @media (max-width: 720px) {
+    .layout { grid-template-columns: 1fr; }
+    .panel { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">{}</div>
+  <h1>GraphQL Runner <span>v1.1</span></h1>
+</header>
+
+<div class="layout">
+  <!-- LEFT PANEL -->
+  <aside class="panel">
+    <div class="field-group">
+      <div class="field-label"><span class="dot"></span>Endpoint</div>
+      <input type="text" id="endpoint" value="https://internal.usercentrics.eu/" placeholder="https://api.example.com/graphql">
+    </div>
+    <div class="field-group">
+      <div class="field-label"><span class="dot"></span>Bearer Token</div>
+      <input type="password" id="token" placeholder="Your token (without 'Bearer')">
+    </div>
+    <div class="field-group">
+      <div class="field-label"><span class="dot"></span>Settings IDs</div>
+      <textarea id="id-input" rows="4" placeholder='Paste a JS array, one per line, or comma-separated:
+["abc123","def456","ghi789"]'></textarea>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
+        <button class="add-btn" style="flex:1" onclick="addId()">+ Parse &amp; Add</button>
+        <button class="add-btn" style="color:var(--red);border-color:rgba(240,96,121,.3)" onclick="clearIds()">✕ Clear all</button>
+      </div>
+      <div class="tags" id="tags"></div>
+      <div class="hint" id="no-ids-hint">No IDs — operation runs once without settingsId</div>
+    </div>
+    <div class="field-group">
+      <div class="field-label"><span class="dot"></span>GraphQL Operation</div>
+      <textarea id="gql" rows="9" placeholder="query MonthlySessionsBySettings($settingsId: String!, $from: String!, $to: String!) {
+  monthlySessionsBySettings(settingsId: $settingsId, from: $from, to: $to) {
+    rows
+  }
+}"></textarea>
+    </div>
+    <div class="field-group">
+      <div class="field-label"><span class="dot"></span>Variables <span style="color:var(--dim);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">— use {{settingsId}}</span></div>
+      <textarea id="vars" rows="4" placeholder='{"settingsId":"{{settingsId}}","from":"2024-01","to":"2024-12"}'></textarea>
+    </div>
+    <div class="field-group guardrail-section">
+      <div class="guardrail-divider">Security guardrails</div>
+      <div id="warn-banner" class="warn-banner" style="display:none">
+        <span class="warn-icon">⚠</span>
+        <span id="warn-text"></span>
+      </div>
+      <div class="guardrail-row">
+        <label>Request timeout</label>
+        <input type="number" id="timeout-ms" value="10" min="1" max="120">
+        <span class="unit">s</span>
+      </div>
+      <div class="guardrail-row">
+        <label>Max IDs per mutation</label>
+        <input type="number" id="max-mutation-ids" value="10" min="1" max="10">
+        <span class="unit">IDs</span>
+      </div>
+    </div>
+    <button class="run-btn" id="run-btn" onclick="runAll()">▶ Run Operation</button>
+    <button class="abort-btn" id="abort-btn" onclick="abortRun()">■ Abort Operation</button>
+    <div class="prog-wrap" id="prog-wrap">
+      <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+      <div class="prog-text" id="prog-text">0 / 0</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <!-- Tab bar -->
+    <div class="tabs-bar">
+      <button class="tab-btn active" onclick="switchTab('results', this)">
+        Results <span class="tab-count" id="results-count">0</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('log', this)">
+        Operation Log <span class="tab-count" id="log-count">0</span>
+      </button>
+    </div>
+
+    <!-- Results tab -->
+    <div class="tab-panel active" id="tab-results">
+      <div class="empty-state" id="results-empty">
+        <div class="empty-icon">◈</div>
+        <p>Configure your operation on the left<br>and press Run to see results here.</p>
+      </div>
+      <div id="results-pane" style="display:none;flex-direction:column;flex:1">
+        <div class="pane-header">
+          <h2>Results</h2>
+          <div class="summary-pills" id="summary-pills"></div>
+          <button class="clear-btn" onclick="clearResults()">Clear</button>
+        </div>
+        <div class="results-list" id="results-list"></div>
+      </div>
+    </div>
+
+    <!-- Log tab -->
+    <div class="tab-panel" id="tab-log">
+      <div class="empty-state" id="log-empty">
+        <div class="empty-icon">◉</div>
+        <p>No operations run yet.<br>Each run will appear here with per-ID status.</p>
+      </div>
+      <div id="log-pane" style="display:none;flex-direction:column;flex:1">
+        <div class="pane-header">
+          <h2>Operation Log</h2>
+          <div class="summary-pills" id="log-summary-pills"></div>
+          <button class="clear-btn" onclick="clearLog()">Clear</button>
+        </div>
+        <div class="log-list" id="log-list"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+const ids = [];
+let okCount = 0, errCount = 0;
+let logEntries = [];
+let runCount = 0;
+let batchAbortController = null; // signals the whole batch to stop
+
+// ── Tabs ───────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── ID management ──────────────────────────────────────
+const MAX_IDS = 10;
+
+function addId() {
+  const raw = document.getElementById('id-input').value.trim();
+  if (!raw) return;
+  let parsed = [];
+  const jsArray = raw.replace(/'/g, '"');
+  if (/^\[/.test(jsArray)) {
+    try {
+      const arr = JSON.parse(jsArray);
+      if (Array.isArray(arr)) parsed = arr.map(x => String(x).trim()).filter(Boolean);
+    } catch (_) {}
+  }
+  if (!parsed.length) {
+    parsed = raw.split(/[\n,;\s]+/).map(s => s.replace(/^['"\[]+|['"\]]+$/g, '').trim()).filter(Boolean);
+  }
+  let added = 0, skipped = 0;
+  parsed.forEach(p => {
+    if (!p) return;
+    if (ids.includes(p)) return;
+    if (ids.length >= MAX_IDS) { skipped++; return; }
+    ids.push(p); added++;
+  });
+  document.getElementById('id-input').value = '';
+  renderTags();
+  if (added && skipped) showToast(`${added} added · ${skipped} skipped (limit ${MAX_IDS})`);
+  else if (added) showToast(`${added} ID${added > 1 ? 's' : ''} added`);
+  else if (skipped) showWarn(`Limit reached — max ${MAX_IDS} IDs allowed.`);
+}
+
+function clearIds() { ids.length = 0; renderTags(); }
+
+function removeId(id) {
+  const i = ids.indexOf(id);
+  if (i > -1) ids.splice(i, 1);
+  renderTags();
+}
+
+function renderTags() {
+  const wrap = document.getElementById('tags');
+  const hint = document.getElementById('no-ids-hint');
+  wrap.innerHTML = ids.map(id =>
+    `<span class="tag"><span>${esc(id)}</span><span class="rm" onclick="removeId('${esc(id)}')" title="Remove">×</span></span>`
+  ).join('');
+  hint.style.display = ids.length ? 'none' : 'block';
+  // Update counter
+  let counter = document.getElementById('id-counter');
+  if (!counter) {
+    counter = document.createElement('div');
+    counter.id = 'id-counter';
+    counter.className = 'id-limit-bar';
+    wrap.parentNode.insertBefore(counter, wrap.nextSibling);
+  }
+  const cls = ids.length >= MAX_IDS ? 'at-limit' : ids.length >= MAX_IDS - 2 ? 'near-limit' : '';
+  counter.innerHTML = `<span class="${cls}">${ids.length} / ${MAX_IDS} IDs</span>${ids.length >= MAX_IDS ? '<span style="color:var(--red);font-size:10px">limit reached</span>' : ''}`;
+  counter.style.display = ids.length > 0 ? 'flex' : 'none';
+}
+
+function showWarn(msg) {
+  const b = document.getElementById('warn-banner');
+  document.getElementById('warn-text').textContent = msg;
+  b.style.display = 'flex';
+  clearTimeout(b._t);
+  b._t = setTimeout(() => b.style.display = 'none', 5000);
+}
+
+function setRunning(running) {
+  const runBtn = document.getElementById('run-btn');
+  const abortBtn = document.getElementById('abort-btn');
+  runBtn.disabled = running;
+  runBtn.innerHTML = running ? '<span class="spinning">↻</span> Running…' : '▶ Run Operation';
+  abortBtn.style.display = running ? 'flex' : 'none';
+}
+
+function abortRun() {
+  if (batchAbortController) {
+    batchAbortController.abort();
+  }
+}
+
+// ── Run ────────────────────────────────────────────────
+function detectType(gql) { return /^\s*mutation/i.test(gql) ? 'mutation' : 'query'; }
+
+function extractOpName(gql) {
+  const m = gql.match(/^\s*(?:query|mutation|subscription)\s+(\w+)/i);
+  return m ? m[1] : null;
+}
+
+async function runAll() {
+  const endpoint = document.getElementById('endpoint').value.trim();
+  const token = document.getElementById('token').value.trim();
+  const gql = document.getElementById('gql').value.trim();
+  const varsRaw = document.getElementById('vars').value.trim();
+  if (!gql) { alert('Please enter a GraphQL operation.'); return; }
+
+  const opType = detectType(gql);
+  const opName = extractOpName(gql) || opType;
+
+  // ── Guardrail: mutation ID limit ──
+  const maxMutIds = Math.min(parseInt(document.getElementById('max-mutation-ids').value, 10) || 10, 10);
+  if (opType === 'mutation' && ids.length > maxMutIds) {
+    showWarn(`Mutation blocked — ${ids.length} IDs exceeds the limit of ${maxMutIds}. Remove some IDs or increase the limit (max 10).`);
+    return;
+  }
+
+  // ── Guardrail: timeout value ──
+  const timeoutSec = Math.max(1, Math.min(120, parseInt(document.getElementById('timeout-ms').value, 10) || 10));
+  const timeoutMs = timeoutSec * 1000;
+
+  const targets = ids.length ? [...ids] : [null];
+  const total = targets.length;
+
+  okCount = 0; errCount = 0;
+  runCount++;
+
+  batchAbortController = new AbortController();
+  const batchSignal = batchAbortController.signal;
+
+  setRunning(true);
+
+  const progWrap = document.getElementById('prog-wrap');
+  progWrap.style.display = 'block';
+  document.getElementById('prog-fill').style.width = '0%';
+  document.getElementById('prog-text').textContent = `0 / ${total}`;
+
+  // Results pane
+  document.getElementById('results-empty').style.display = 'none';
+  const rp = document.getElementById('results-pane');
+  rp.style.display = 'flex';
+  document.getElementById('results-list').innerHTML = '';
+  document.getElementById('summary-pills').innerHTML = '';
+  document.getElementById('results-count').textContent = '0';
+
+  // Log entry
+  const logEntry = {
+    index: runCount,
+    opName, opType, endpoint,
+    gql, varsRaw,
+    ts: new Date(),
+    total,
+    done: 0,
+    successCount: 0,
+    failCount: 0,
+    status: 'running',
+    idRows: targets.map(id => ({ id, status: 'pending', httpStatus: null, duration: null }))
+  };
+  logEntries.unshift(logEntry);
+  renderLogEntry(logEntry, true);
+  updateLogTab();
+
+  let batchAborted = false;
+
+  for (let i = 0; i < targets.length; i++) {
+    // Check if batch was aborted before starting this ID
+    if (batchSignal.aborted) { batchAborted = true; break; }
+
+    const id = targets[i];
+    const idRow = logEntry.idRows[i];
+    idRow.status = 'running';
+    updateLogIdRow(logEntry, i);
+
+    let variables = {};
+    if (varsRaw) {
+      try {
+        const replaced = id ? varsRaw.replace(/\{\{settingsId\}\}/g, id) : varsRaw;
+        variables = JSON.parse(replaced);
+      } catch (e) {
+        idRow.status = 'error'; idRow.error = 'Invalid JSON in variables: ' + e.message;
+        logEntry.done++; logEntry.failCount++;
+        errCount++;
+        renderResult({ id, opType, ok: false, error: idRow.error, status: null, duration: 0 });
+        updateLogIdRow(logEntry, i);
+        updateLogEntryHeader(logEntry);
+        updateResultCount();
+        updateSummary();
+        continue;
+      }
+    }
+
+    const t0 = Date.now();
+    const controller = new AbortController();
+    // Both per-request timeout and batch abort trigger this controller
+    const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
+    const batchListener = () => controller.abort();
+    batchSignal.addEventListener('abort', batchListener, { once: true });
+
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const res = await fetch(endpoint, {
+        method: 'POST', headers, signal: controller.signal,
+        body: JSON.stringify({ query: gql, variables })
+      });
+      clearTimeout(timeoutHandle);
+      batchSignal.removeEventListener('abort', batchListener);
+      const duration = Date.now() - t0;
+      let data, error;
+      try { data = await res.json(); } catch (e) { error = 'Failed to parse JSON response'; }
+      if (data && data.errors && data.errors.length) error = data.errors.map(e => e.message).join('; ');
+      const ok = res.ok && !error;
+
+      idRow.status = ok ? 'ok' : 'error';
+      idRow.httpStatus = res.status;
+      idRow.duration = duration;
+      if (!ok) idRow.error = error;
+
+      if (ok) { okCount++; logEntry.successCount++; } else { errCount++; logEntry.failCount++; }
+      logEntry.done++;
+
+      renderResult({ id, opType, ok, error, status: res.status, duration, data });
+    } catch (err) {
+      clearTimeout(timeoutHandle);
+      batchSignal.removeEventListener('abort', batchListener);
+      const duration = Date.now() - t0;
+      const isUserAbort = batchSignal.aborted;
+      const isTimeout = err.name === 'AbortError' && !isUserAbort;
+      const errorMsg = isUserAbort ? 'Aborted by user' : isTimeout ? `Timed out after ${timeoutSec}s` : err.message;
+      idRow.status = isUserAbort ? 'aborted' : isTimeout ? 'timeout' : 'error';
+      idRow.error = errorMsg; idRow.duration = duration;
+      errCount++; logEntry.failCount++; logEntry.done++;
+      renderResult({ id, opType, ok: false, error: errorMsg, status: isUserAbort ? 'ABORTED' : isTimeout ? 'TIMEOUT' : null, duration, isTimeout, isAborted: isUserAbort });
+      if (isUserAbort) { batchAborted = true; break; }
+    }
+
+    const pct = Math.round(((i + 1) / total) * 100);
+    document.getElementById('prog-fill').style.width = pct + '%';
+    document.getElementById('prog-text').textContent = `${i + 1} / ${total}`;
+
+    updateLogIdRow(logEntry, i);
+    updateLogEntryHeader(logEntry);
+    updateResultCount();
+    updateSummary();
+  }
+
+  // Mark any remaining pending IDs as aborted
+  if (batchAborted) {
+    logEntry.idRows.forEach((row, i) => {
+      if (row.status === 'pending' || row.status === 'running') {
+        row.status = 'aborted';
+        row.error = 'Aborted by user';
+        updateLogIdRow(logEntry, i);
+      }
+    });
+    logEntry.status = 'aborted';
+  } else {
+    logEntry.status = logEntry.failCount === 0 ? 'ok' : logEntry.successCount === 0 ? 'error' : 'mixed';
+  }
+
+  updateLogEntryHeader(logEntry);
+  updateLogTab();
+  batchAbortController = null;
+  setRunning(false);
+}
+
+// ── Results rendering ──────────────────────────────────
+function updateResultCount() {
+  document.getElementById('results-count').textContent = okCount + errCount;
+}
+
+function updateSummary() {
+  document.getElementById('summary-pills').innerHTML =
+    (okCount ? `<span class="pill pill-ok">✓ ${okCount}</span>` : '') +
+    (errCount ? `<span class="pill pill-err">✗ ${errCount}</span>` : '');
+}
+
+function renderResult({ id, opType, ok, error, status, duration, data, isTimeout, isAborted }) {
+  const list = document.getElementById('results-list');
+  const label = id || '(no id)';
+  const typeBadge = `<span class="badge ${opType === 'mutation' ? 'badge-mut' : 'badge-query'}">${opType}</span>`;
+  const rawJson = JSON.stringify(data, null, 2);
+  const dotCls = ok ? 'dot-ok' : (isTimeout || isAborted) ? 'dot-timeout' : 'dot-err';
+  let statusLabel;
+  if (isAborted) statusLabel = `<span style="font-size:10px;color:var(--muted);font-family:var(--mono);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px">ABORTED</span>`;
+  else if (isTimeout) statusLabel = `<span style="font-size:10px;color:var(--amber);font-family:var(--mono);background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.25);border-radius:4px;padding:2px 7px">TIMEOUT</span>`;
+  else statusLabel = `<span class="badge-http">${status || '—'}</span>`;
+
+  let bodyHtml = '';
+  if (!ok) {
+    const isWarn = isTimeout || isAborted;
+    const warnColor = isAborted ? 'var(--muted)' : 'var(--amber)';
+    const warnBg = isAborted ? 'rgba(255,255,255,.02)' : 'rgba(245,166,35,.04)';
+    const warnBorder = isAborted ? 'var(--border)' : 'rgba(245,166,35,.25)';
+    bodyHtml = `<div class="code-block" style="${isWarn ? `border-color:${warnBorder};color:${warnColor};background:${warnBg}` : 'border-color:rgba(240,96,121,.25);color:var(--red);background:rgba(240,96,121,.04)'}">${esc(error || 'Unknown error')}</div>`;
+  } else if (opType === 'mutation') {
+    bodyHtml = `<div class="code-block">${esc(rawJson)}</div>`;
+  } else {
+    bodyHtml = buildQuerySummary(data) + `<div class="code-block">${esc(rawJson)}</div>`;
+  }
+  const item = document.createElement('div');
+  item.className = 'result-item';
+  item.innerHTML = `
+    <div class="ri-header" onclick="toggle(this)">
+      <span class="status-dot ${dotCls}"></span>
+      ${typeBadge}
+      <span class="ri-id">${esc(label)}</span>
+      ${statusLabel}
+      <span class="badge-ms">${duration}ms</span>
+      <span class="chevron">▾</span>
+    </div>
+    <div class="ri-body">
+      <div class="ri-meta">
+        <span>${isAborted ? '◼ aborted' : isTimeout ? '⏱ timed out' : 'HTTP ' + (status || '—')}</span><span>·</span><span>${duration}ms</span>
+        <button class="copy-btn" onclick="copyJ(this, ${JSON.stringify(rawJson).replace(/</g,'\\u003c')})">⎘ Copy JSON</button>
+      </div>
+      ${bodyHtml}
+    </div>`;
+  list.appendChild(item);
+}
+
+function buildQuerySummary(data) {
+  if (!data || !data.data) return '';
+  let html = '<div class="data-summary">';
+  for (const [k, v] of Object.entries(data.data)) {
+    if (Array.isArray(v)) {
+      html += `<div class="data-key"><strong>${esc(k)}</strong><span class="data-count">${v.length} rows</span></div>`;
+    } else if (v && typeof v === 'object') {
+      const rows = v.rows;
+      if (Array.isArray(rows)) {
+        html += `<div class="data-key"><strong>${esc(k)}.rows</strong><span class="data-count">${rows.length} rows</span></div>`;
+      } else {
+        html += `<div class="data-key"><strong>${esc(k)}</strong></div>`;
+      }
+    } else {
+      html += `<div class="data-key"><strong>${esc(k)}</strong>: ${esc(String(v))}</div>`;
+    }
+  }
+  html += '</div>';
+  return html;
+}
+
+// ── Log rendering ──────────────────────────────────────
+function updateLogTab() {
+  const count = logEntries.length;
+  document.getElementById('log-count').textContent = count;
+  document.getElementById('log-empty').style.display = count ? 'none' : 'flex';
+  const lp = document.getElementById('log-pane');
+  lp.style.display = count ? 'flex' : 'none';
+
+  // summary: total runs, total ok, total err across all entries
+  const totalOk = logEntries.reduce((s,e) => s + e.successCount, 0);
+  const totalErr = logEntries.reduce((s,e) => s + e.failCount, 0);
+  document.getElementById('log-summary-pills').innerHTML =
+    `<span class="pill pill-run">${count} run${count !== 1 ? 's' : ''}</span>` +
+    (totalOk ? `<span class="pill pill-ok">✓ ${totalOk}</span>` : '') +
+    (totalErr ? `<span class="pill pill-err">✗ ${totalErr}</span>` : '');
+}
+
+function renderLogEntry(entry, prepend) {
+  const list = document.getElementById('log-list');
+  const el = document.createElement('div');
+  el.className = 'log-entry';
+  el.id = `log-entry-${entry.index}`;
+  el.innerHTML = buildLogEntryHTML(entry);
+  if (prepend) list.prepend(el); else list.appendChild(el);
+}
+
+function buildLogEntryHTML(entry) {
+  const statusClass = {
+    running: 'lsb-running', ok: 'lsb-ok', mixed: 'lsb-mixed', error: 'lsb-err', aborted: 'lsb-timeout'
+  }[entry.status] || 'lsb-running';
+
+  const statusLabel = {
+    running: `running ${entry.done}/${entry.total}`,
+    ok: `all passed`,
+    mixed: `${entry.failCount} failed`,
+    error: `all failed`,
+    aborted: `aborted — ${entry.done}/${entry.total} done`
+  }[entry.status] || 'running';
+
+  const fillClass = {
+    running: 'fill-running', ok: 'fill-done-ok', mixed: 'fill-done-mixed', error: 'fill-done-err', aborted: 'fill-done-mixed'
+  }[entry.status] || 'fill-running';
+
+  const pct = entry.total > 0 ? Math.round((entry.done / entry.total) * 100) : 0;
+  const tsStr = entry.ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateStr = entry.ts.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+  const typeClass = entry.opType === 'mutation' ? 'badge-mut' : 'badge-query';
+  const gqlPreview = entry.gql.split('\n').slice(0, 4).join('\n');
+
+  const idRowsHTML = entry.idRows.map((row, i) => {
+    const ds = dotStyle(row.status);
+    return `<div class="log-id-row" id="log-idrow-${entry.index}-${i}">
+      <span class="log-id-val">${esc(row.id || '(no id)')}</span>
+      <span class="log-id-status">
+        <span class="ls-dot ${ds.dot}"></span>
+        <span class="ls-label ${ds.label}">${ds.text}</span>
+      </span>
+      <span class="log-id-http">${row.httpStatus || '—'}</span>
+      <span class="log-id-ms">${row.duration != null ? row.duration + 'ms' : '—'}</span>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="log-header" onclick="toggleLog(this)">
+      <span class="log-index">#${entry.index}</span>
+      <div class="log-main">
+        <div class="log-title-row">
+          <span class="log-op-name">${esc(entry.opName)}</span>
+          <span class="badge ${typeClass}">${entry.opType}</span>
+          <span class="log-status-badge ${statusClass}" id="log-sbadge-${entry.index}">${statusLabel}</span>
+        </div>
+        <div class="log-meta-row">
+          <span class="log-ts">${dateStr} · ${tsStr}</span>
+          <span class="log-endpoint">${esc(entry.endpoint)}</span>
+        </div>
+        ${entry.total > 1 ? `
+        <div class="log-prog-row">
+          <div class="log-mini-track"><div class="log-mini-fill ${fillClass}" id="log-prog-${entry.index}" style="width:${pct}%"></div></div>
+          <span class="log-prog-label" id="log-prog-label-${entry.index}">${entry.done}/${entry.total} IDs</span>
+        </div>` : ''}
+      </div>
+      <span class="log-chevron" aria-hidden="true">▾</span>
+    </div>
+    <div class="log-body">
+      <div class="log-body-inner">
+        <div class="log-ids-label">${entry.total} ID${entry.total !== 1 ? 's' : ''} · ${entry.opType}</div>
+        <div class="log-id-grid" style="grid-template-columns:1fr 80px 60px 55px;display:grid;gap:4px;margin-bottom:2px;padding:0 4px">
+          <span style="font-size:10px;color:var(--dim);font-family:var(--mono)">settings id</span>
+          <span style="font-size:10px;color:var(--dim);font-family:var(--mono)">status</span>
+          <span style="font-size:10px;color:var(--dim);font-family:var(--mono)">http</span>
+          <span style="font-size:10px;color:var(--dim);font-family:var(--mono)">latency</span>
+        </div>
+        <div class="log-id-grid" id="log-idgrid-${entry.index}">${idRowsHTML}</div>
+        <div class="log-ids-label" style="margin-top:10px">operation</div>
+        <div class="log-query-preview">${esc(gqlPreview)}${entry.gql.split('\n').length > 4 ? '\n…' : ''}</div>
+      </div>
+    </div>`;
+}
+
+function dotStyle(status) {
+  return {
+    pending:  { dot: 'ls-pending', label: 'ls-label-pending', text: 'pending' },
+    running:  { dot: 'ls-running', label: 'ls-label-running', text: 'running' },
+    ok:       { dot: 'ls-ok',      label: 'ls-label-ok',      text: 'ok' },
+    error:    { dot: 'ls-err',     label: 'ls-label-err',     text: 'error' },
+    timeout:  { dot: 'ls-timeout', label: 'ls-label-timeout', text: 'timeout' },
+    aborted:  { dot: 'ls-pending', label: 'ls-label-pending', text: 'aborted' },
+  }[status] || { dot: 'ls-pending', label: 'ls-label-pending', text: status };
+}
+
+function updateLogIdRow(entry, i) {
+  const el = document.getElementById(`log-idrow-${entry.index}-${i}`);
+  if (!el) return;
+  const row = entry.idRows[i];
+  const ds = dotStyle(row.status);
+  el.innerHTML = `
+    <span class="log-id-val">${esc(row.id || '(no id)')}</span>
+    <span class="log-id-status">
+      <span class="ls-dot ${ds.dot}"></span>
+      <span class="ls-label ${ds.label}">${ds.text}</span>
+    </span>
+    <span class="log-id-http">${row.httpStatus || '—'}</span>
+    <span class="log-id-ms">${row.duration != null ? row.duration + 'ms' : '—'}</span>`;
+}
+
+function updateLogEntryHeader(entry) {
+  const sbadge = document.getElementById(`log-sbadge-${entry.index}`);
+  const progBar = document.getElementById(`log-prog-${entry.index}`);
+  const progLabel = document.getElementById(`log-prog-label-${entry.index}`);
+
+  const statusClass = { running:'lsb-running', ok:'lsb-ok', mixed:'lsb-mixed', error:'lsb-err', aborted:'lsb-timeout' }[entry.status] || 'lsb-running';
+  const statusLabel = {
+    running: `running ${entry.done}/${entry.total}`,
+    ok: `all passed`, mixed: `${entry.failCount} failed`, error: `all failed`, aborted: `aborted — ${entry.done}/${entry.total} done`
+  }[entry.status] || 'running';
+
+  if (sbadge) {
+    sbadge.className = `log-status-badge ${statusClass}`;
+    sbadge.textContent = statusLabel;
+  }
+  if (progBar) {
+    const pct = entry.total > 0 ? Math.round((entry.done / entry.total) * 100) : 0;
+    const fillClass = { running:'fill-running', ok:'fill-done-ok', mixed:'fill-done-mixed', error:'fill-done-err' }[entry.status] || 'fill-running';
+    progBar.style.width = pct + '%';
+    progBar.className = `log-mini-fill ${fillClass}`;
+  }
+  if (progLabel) progLabel.textContent = `${entry.done}/${entry.total} IDs`;
+}
+
+function toggleLog(header) {
+  const body = header.nextElementSibling;
+  const chevron = header.querySelector('.log-chevron');
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  chevron.classList.toggle('open', !open);
+}
+
+// ── Clear ──────────────────────────────────────────────
+function clearResults() {
+  document.getElementById('results-list').innerHTML = '';
+  document.getElementById('results-pane').style.display = 'none';
+  document.getElementById('results-empty').style.display = 'flex';
+  document.getElementById('prog-wrap').style.display = 'none';
+  document.getElementById('summary-pills').innerHTML = '';
+  document.getElementById('results-count').textContent = '0';
+  okCount = 0; errCount = 0;
+}
+
+function clearLog() {
+  logEntries = [];
+  document.getElementById('log-list').innerHTML = '';
+  updateLogTab();
+}
+
+// ── Helpers ────────────────────────────────────────────
+function toggle(header) {
+  const body = header.nextElementSibling;
+  const chevron = header.querySelector('.chevron');
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  chevron.classList.toggle('open', !open);
+}
+
+function copyJ(btn, json) {
+  navigator.clipboard.writeText(json).then(() => {
+    btn.textContent = '✓ Copied';
+    setTimeout(() => btn.textContent = '⎘ Copy JSON', 1500);
+  });
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg) {
+  let t = document.getElementById('parse-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'parse-toast';
+    t.style.cssText = 'position:fixed;bottom:18px;right:20px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;padding:7px 14px;font-size:11px;font-family:var(--mono);color:var(--green);z-index:999;transition:opacity .3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = '✓ ' + msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.opacity = '0', 2000);
+}
+</script>
+</body>
+</html>
